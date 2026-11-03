@@ -3,19 +3,19 @@ import { DELIVERY_STATUS, ORDER_PRIORITY, ORDER_STATUS, USER_ROLES } from '../co
 import { deliveriesService } from './deliveries.service.js'
 import { ordersService } from './orders.service.js'
 import { usersService } from './users.service.js'
+import { InvalidMockQuantityError, MockSeedFailedError } from '../errors/domain-error.js'
 
-const badRequest = (message) => Object.assign(new Error(message), { status: 400 })
 const DEFAULT_QTY = Object.freeze({ users: 2, orders: 5, deliveries: 5, seed: 10 })
 const MAX_QTY = 100
 
 const quantity = (value, endpoint) => {
   const raw = value === undefined ? String(DEFAULT_QTY[endpoint]) : value
   if (typeof raw !== 'string' || !/^\d+$/.test(raw)) {
-    throw badRequest('QTY_MUST_BE_A_POSITIVE_INTEGER')
+    throw new InvalidMockQuantityError()
   }
   const qty = Number(raw)
   if (!Number.isSafeInteger(qty) || qty < 1 || qty > MAX_QTY) {
-    throw badRequest(`QTY_MUST_BE_BETWEEN_1_AND_${MAX_QTY}`)
+    throw new InvalidMockQuantityError()
   }
   return qty
 }
@@ -83,36 +83,40 @@ export const mocksService = {
 
   seed: async (requestedQty) => {
     const qty = quantity(requestedQty, 'seed')
-    const mockUsers = createMockUsers(qty)
-    const mockStores = createMockStores(qty)
-    const customers = []
-    const drivers = []
-    const stores = []
-    const orders = []
-    const deliveries = []
+    try {
+      const mockUsers = createMockUsers(qty)
+      const mockStores = createMockStores(qty)
+      const customers = []
+      const drivers = []
+      const stores = []
+      const orders = []
+      const deliveries = []
 
-    for (const { _id, ...data } of mockUsers.customers) customers.push(await usersService.createUser(data))
-    for (const { _id, ...data } of mockUsers.drivers) drivers.push(await usersService.createUser(data))
-    for (const { _id, ...data } of mockStores) stores.push(await usersService.createStore(data))
+      for (const { _id, ...data } of mockUsers.customers) customers.push(await usersService.createUser(data))
+      for (const { _id, ...data } of mockUsers.drivers) drivers.push(await usersService.createUser(data))
+      for (const { _id, ...data } of mockStores) stores.push(await usersService.createStore(data))
 
-    const priorities = Object.values(ORDER_PRIORITY)
-    for (let index = 0; index < qty; index += 1) {
-      orders.push(await ordersService.createOrder({
-        userId: customers[index]._id,
-        storeId: stores[index]._id,
-        address: `${200 + index} Calle de Entrega`,
-        items: [{ name: `Producto de prueba ${index + 1}`, price: 1000 + index * 100, quantity: 1 }],
-        priority: priorities[index % priorities.length],
-      }))
+      const priorities = Object.values(ORDER_PRIORITY)
+      for (let index = 0; index < qty; index += 1) {
+        orders.push(await ordersService.createOrder({
+          userId: customers[index]._id,
+          storeId: stores[index]._id,
+          address: `${200 + index} Calle de Entrega`,
+          items: [{ name: `Producto de prueba ${index + 1}`, price: 1000 + index * 100, quantity: 1 }],
+          priority: priorities[index % priorities.length],
+        }))
+      }
+
+      for (let index = 0; index < qty; index += 1) {
+        deliveries.push(await deliveriesService.create({
+          orderId: orders[index]._id,
+          driverId: drivers[index % drivers.length]._id,
+        }))
+      }
+
+      return { customers, drivers, stores, orders, deliveries }
+    } catch (error) {
+      throw new MockSeedFailedError(error)
     }
-
-    for (let index = 0; index < qty; index += 1) {
-      deliveries.push(await deliveriesService.create({
-        orderId: orders[index]._id,
-        driverId: drivers[index % drivers.length]._id,
-      }))
-    }
-
-    return { customers, drivers, stores, orders, deliveries }
   },
 }

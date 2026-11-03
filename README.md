@@ -136,4 +136,41 @@ curl "http://localhost:8080/api/mocks/deliveries?qty=5"
 curl -X POST "http://localhost:8080/api/mocks/seed?qty=10"
 ```
 
+## Manejo de errores
+
+Los errores se responden únicamente desde el middleware global, con el mismo formato:
+
+```json
+{
+  "status": "error",
+  "error": {
+    "code": "INVALID_MOCK_QUANTITY",
+    "message": "La cantidad debe ser un entero entre 1 y 100."
+  }
+}
+```
+
+El código, mensaje y estado HTTP salen del catálogo central de errores. Los errores inesperados se registran en el servidor y se responden al cliente con un mensaje genérico, sin detalles internos.
+
+Prueba algunos errores desde la terminal:
+
+```bash
+# Cantidad negativa: HTTP 400, INVALID_MOCK_QUANTITY
+curl -i "http://localhost:8080/api/mocks/users?qty=-2"
+
+# Cantidad fuera del rango permitido: HTTP 400, INVALID_MOCK_QUANTITY
+curl -i "http://localhost:8080/api/mocks/orders?qty=101"
+
+# ID con formato inválido: HTTP 400, INVALID_ID
+curl -i "http://localhost:8080/api/orders/no-es-un-id"
+
+# Pedido con formato de ID válido pero inexistente: HTTP 404, ORDER_NOT_FOUND
+curl -i "http://localhost:8080/api/orders/000000000000000000000000"
+
+# Fallo durante el seed (por ejemplo, MongoDB no disponible): HTTP 500, MOCK_SEED_FAILED
+curl -i -X POST "http://localhost:8080/api/mocks/seed?qty=1"
+```
+
+En un fallo de seed, el cliente recibe el código estable `MOCK_SEED_FAILED`; la causa original se conserva y se registra únicamente en el servidor para depuración.
+
 El POST crea clientes y repartidores con sus roles correspondientes, luego tiendas, pedidos y entregas. Cada entrega referencia un pedido y un usuario cuyo rol es `DRIVER`. Las cantidades no numéricas, fraccionarias, menores que 1 o mayores que 100 se rechazan con HTTP 400.

@@ -1,8 +1,7 @@
 import { productsRepository } from '../repositories/products.repository.js'
 import { PRODUCT_STATUS } from '../constants/index.js'
+import { InvalidProductDataError, ProductNotFoundError } from '../errors/domain-error.js'
 
-const notFound = () => Object.assign(new Error('PRODUCT_NOT_FOUND'), { status: 404 })
-const badRequest = (message) => Object.assign(new Error(message), { status: 400 })
 const statusForStock = (stock) => stock === 0
   ? PRODUCT_STATUS.OUT_OF_STOCK
   : PRODUCT_STATUS.AVAILABLE
@@ -10,21 +9,21 @@ const statusForStock = (stock) => stock === 0
 const validateProduct = (data, { partial = false } = {}) => {
   const allowed = new Set(['name', 'description', 'price', 'stock'])
   for (const key of Object.keys(data)) {
-    if (!allowed.has(key)) throw badRequest(`INVALID_PRODUCT_FIELD:${key}`)
+    if (!allowed.has(key)) throw new InvalidProductDataError('INVALID_PRODUCT_FIELD')
   }
   if (!partial || 'name' in data) {
-    if (typeof data.name !== 'string' || !data.name.trim()) throw badRequest('INVALID_PRODUCT_NAME')
+    if (typeof data.name !== 'string' || !data.name.trim()) throw new InvalidProductDataError('INVALID_PRODUCT_NAME')
   }
   if (!partial || 'price' in data) {
     if (typeof data.price !== 'number' || !Number.isFinite(data.price) || data.price < 0) {
-      throw badRequest('INVALID_PRODUCT_PRICE')
+      throw new InvalidProductDataError('INVALID_PRODUCT_PRICE')
     }
   }
   if (!partial || 'stock' in data) {
-    if (!Number.isInteger(data.stock) || data.stock < 0) throw badRequest('INVALID_PRODUCT_STOCK')
+    if (!Number.isInteger(data.stock) || data.stock < 0) throw new InvalidProductDataError('INVALID_PRODUCT_STOCK')
   }
   if ('description' in data && typeof data.description !== 'string') {
-    throw badRequest('INVALID_PRODUCT_DESCRIPTION')
+    throw new InvalidProductDataError('INVALID_PRODUCT_DESCRIPTION')
   }
 }
 
@@ -32,7 +31,7 @@ export const productsService = {
   getAll: () => productsRepository.getAll(),
   getById: async (id) => {
     const product = await productsRepository.getById(id)
-    if (!product) throw notFound()
+    if (!product) throw new ProductNotFoundError()
     return product
   },
   create: (data) => {
@@ -46,18 +45,18 @@ export const productsService = {
   update: async (id, data) => {
     validateProduct(data, { partial: true })
     const current = await productsRepository.getById(id)
-    if (!current) throw notFound()
+    if (!current) throw new ProductNotFoundError()
     const updated = await productsRepository.update(id, {
       ...data,
       ...(data.name ? { name: data.name.trim() } : {}),
       status: statusForStock(data.stock ?? current.stock),
     })
-    if (!updated) throw notFound()
+    if (!updated) throw new ProductNotFoundError()
     return updated
   },
   delete: async (id) => {
     const product = await productsRepository.delete(id)
-    if (!product) throw notFound()
+    if (!product) throw new ProductNotFoundError()
     return product
   },
 }
