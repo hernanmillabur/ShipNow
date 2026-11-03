@@ -25,24 +25,30 @@ src/
 │   └── index.js
 ├── controllers/
 │   ├── orders.controller.js
+│   ├── mocks.controller.js
 │   ├── products.controller.js
 │   └── users.controller.js
 ├── models/
 │   ├── order.model.js
+│   ├── delivery.model.js
 │   ├── product.model.js
 │   ├── store.model.js
 │   └── user.model.js
 ├── repositories/
 │   ├── orders.repository.js
+│   ├── deliveries.repository.js
 │   ├── products.repository.js
 │   ├── stores.repository.js
 │   └── users.repository.js
 ├── routes/
 │   ├── orders.router.js
+│   ├── mocks.router.js
 │   ├── products.router.js
 │   └── users.router.js
 └── services/
     ├── orders.service.js
+    ├── deliveries.service.js
+    ├── mocks.service.js
     ├── products.service.js
     └── users.service.js
 ```
@@ -111,3 +117,23 @@ El estado se deriva del stock: `available` cuando es mayor que cero y `out_of_st
 | GET | `/api/orders` | Lista pedidos |
 | GET | `/api/orders/:id` | Obtiene un pedido |
 | PATCH | `/api/orders/:id/deliver` | Marca un pedido como entregado |
+
+### Mocks de la segunda pre-entrega
+
+Los GET generan datos simulados en memoria y no los guardan en MongoDB. `qty` debe ser un entero entre 1 y 100; si se omite, cada endpoint usa la cantidad predeterminada indicada.
+
+```bash
+# Genera 2 clientes y 2 repartidores ficticios (predeterminado: 2)
+curl "http://localhost:8080/api/mocks/users?qty=2"
+
+# Genera pedidos ficticios junto a sus clientes y tiendas relacionados (predeterminado: 5)
+curl "http://localhost:8080/api/mocks/orders?qty=5"
+
+# Genera clientes, repartidores, tiendas, pedidos y entregas relacionadas (predeterminado: 5)
+curl "http://localhost:8080/api/mocks/deliveries?qty=5"
+
+# Inserta en MongoDB usuarios, tiendas, pedidos y entregas relacionados (predeterminado: 10)
+curl -X POST "http://localhost:8080/api/mocks/seed?qty=10"
+```
+
+El POST crea clientes y repartidores con sus roles correspondientes, luego tiendas, pedidos y entregas. Cada entrega referencia un pedido y un usuario cuyo rol es `DRIVER`. Las cantidades no numéricas, fraccionarias, menores que 1 o mayores que 100 se rechazan con HTTP 400.

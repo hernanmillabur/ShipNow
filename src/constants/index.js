@@ -11,6 +11,18 @@ export const ORDER_STATUS = Object.freeze({
   CANCELLED: 'cancelled',
 })
 
+export const DELIVERY_STATUS = Object.freeze({
+  PENDING: 'pending',
+  IN_TRANSIT: 'in_transit',
+  DELIVERED: 'delivered',
+})
+
+export const ORDER_PRIORITY = Object.freeze({
+  LOW: 'low',
+  NORMAL: 'normal',
+  HIGH: 'high',
+})
+
 export const USER_ROLES = Object.freeze({
   ADMIN: 'admin',
   USER: 'user',
