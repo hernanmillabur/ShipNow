@@ -4,6 +4,7 @@ import { deliveriesService } from './deliveries.service.js'
 import { ordersService } from './orders.service.js'
 import { usersService } from './users.service.js'
 import { InvalidMockQuantityError, MockSeedFailedError } from '../errors/domain-error.js'
+import { logger, safeErrorMetadata } from '../logging/logger.js'
 
 const DEFAULT_QTY = Object.freeze({ users: 2, orders: 5, deliveries: 5, seed: 10 })
 const MAX_QTY = 100
@@ -114,9 +115,26 @@ export const mocksService = {
         }))
       }
 
+      logger.info('Mock seed completed', {
+        event: 'mock.seed.completed',
+        counts: {
+          customers: customers.length,
+          drivers: drivers.length,
+          stores: stores.length,
+          orders: orders.length,
+          deliveries: deliveries.length,
+        },
+      })
+
       return { customers, drivers, stores, orders, deliveries }
     } catch (error) {
-      throw new MockSeedFailedError(error)
+      const seedError = new MockSeedFailedError(error)
+      logger.error('Mock seed failed', {
+        event: 'mock.seed.failed',
+        ...safeErrorMetadata(seedError),
+      })
+      seedError.logged = true
+      throw seedError
     }
   },
 }

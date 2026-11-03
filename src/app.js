@@ -6,29 +6,56 @@ import ordersRouter from './routes/orders.router.js'
 import productsRouter from './routes/products.router.js'
 import mocksRouter from './routes/mocks.router.js'
 import usersRouter from './routes/users.router.js'
+import loggingRouter from './routes/logging.router.js'
 import { errorMiddleware } from './middlewares/error.middleware.js'
+import {
+  requestLoggerMiddleware,
+  requestTimingMiddleware,
+} from './middlewares/request-logger.middleware.js'
+import { logger, safeErrorMetadata } from './logging/logger.js'
 
 setServers(['1.1.1.1'])
 
 const app = express()
+app.use(requestTimingMiddleware)
 app.use(express.json())
+app.use(requestLoggerMiddleware)
 
 app.use('/api/orders', ordersRouter)
 app.use('/api/products', productsRouter)
 app.use('/api/users', usersRouter)
 app.use('/api/mocks', mocksRouter)
+app.use('/api/logging', loggingRouter)
 app.use(errorMiddleware)
-
-app.listen(config.port, () => console.log(`ShipNow en puerto ${config.port} (${config.nodeEnv})`))
 
 const connectMongo = async () => {
   try {
     await mongoose.connect(config.mongoUri)
-    console.log('Mongo conectado')
+    logger.info('MongoDB connected', { event: 'mongodb.connected' })
   } catch (error) {
-    console.error(`Mongo no disponible; nuevo intento en 5 segundos: ${error.message}`)
+    logger.warning('MongoDB connection failed; retry scheduled', {
+      event: 'mongodb.connection.retry',
+      retryDelayMs: 5000,
+      ...safeErrorMetadata(error),
+    })
     setTimeout(connectMongo, 5000)
   }
 }
 
-void connectMongo()
+const server = app.listen(config.port, () => {
+  logger.info('ShipNow HTTP server listening', {
+    event: 'server.listening',
+    port: config.port,
+    nodeEnv: config.nodeEnv,
+  })
+  void connectMongo()
+})
+
+server.on('error', (error) => {
+  logger.fatal('ShipNow HTTP server failed to start', {
+    event: 'server.start.failed',
+    ...safeErrorMetadata(error),
+  })
+  logger.end()
+  logger.once('finish', () => { process.exitCode = 1 })
+})

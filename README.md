@@ -18,39 +18,49 @@ La configuración se carga y valida centralmente en `src/config/env.config.js`. 
 
 ```text
 src/
-├── app.js
-├── config/
-│   └── env.config.js
-├── constants/
-│   └── index.js
-├── controllers/
-│   ├── orders.controller.js
-│   ├── mocks.controller.js
-│   ├── products.controller.js
-│   └── users.controller.js
-├── models/
-│   ├── order.model.js
-│   ├── delivery.model.js
-│   ├── product.model.js
-│   ├── store.model.js
-│   └── user.model.js
-├── repositories/
-│   ├── orders.repository.js
-│   ├── deliveries.repository.js
-│   ├── products.repository.js
-│   ├── stores.repository.js
-│   └── users.repository.js
-├── routes/
-│   ├── orders.router.js
-│   ├── mocks.router.js
-│   ├── products.router.js
-│   └── users.router.js
-└── services/
-    ├── orders.service.js
-    ├── deliveries.service.js
-    ├── mocks.service.js
-    ├── products.service.js
-    └── users.service.js
+|-- app.js
+|-- config/
+|   `-- env.config.js
+|-- constants/
+|   `-- index.js
+|-- controllers/
+|   |-- logging.controller.js
+|   |-- mocks.controller.js
+|   |-- orders.controller.js
+|   |-- products.controller.js
+|   `-- users.controller.js
+|-- errors/
+|   |-- domain-error.js
+|   `-- error-catalog.js
+|-- logging/
+|   `-- logger.js
+|-- middlewares/
+|   |-- error.middleware.js
+|   `-- request-logger.middleware.js
+|-- models/
+|   |-- delivery.model.js
+|   |-- order.model.js
+|   |-- product.model.js
+|   |-- store.model.js
+|   `-- user.model.js
+|-- repositories/
+|   |-- deliveries.repository.js
+|   |-- orders.repository.js
+|   |-- products.repository.js
+|   |-- stores.repository.js
+|   `-- users.repository.js
+|-- routes/
+|   |-- logging.router.js
+|   |-- mocks.router.js
+|   |-- orders.router.js
+|   |-- products.router.js
+|   `-- users.router.js
+`-- services/
+    |-- deliveries.service.js
+    |-- mocks.service.js
+    |-- orders.service.js
+    |-- products.service.js
+    `-- users.service.js
 ```
 
 ## Instalación y configuración
@@ -174,3 +184,42 @@ curl -i -X POST "http://localhost:8080/api/mocks/seed?qty=1"
 En un fallo de seed, el cliente recibe el código estable `MOCK_SEED_FAILED`; la causa original se conserva y se registra únicamente en el servidor para depuración.
 
 El POST crea clientes y repartidores con sus roles correspondientes, luego tiendas, pedidos y entregas. Cada entrega referencia un pedido y un usuario cuyo rol es `DRIVER`. Las cantidades no numéricas, fraccionarias, menores que 1 o mayores que 100 se rechazan con HTTP 400.
+
+## Logging y monitoreo básico
+
+ShipNow usa Winston para centralizar los registros de solicitudes HTTP, eventos de inicio y conexión a MongoDB, cargas de mocks y errores. Los registros estructurados incluyen timestamp, nivel y mensaje. Se filtran campos sensibles como contraseñas, tokens y URI de MongoDB.
+
+Niveles configurados: `fatal`, `error`, `warning`, `info`, `http` y `debug`. `fatal` identifica una falla crítica de inicio; la prueba del logger lo emite solo como evento simulado.
+
+El umbral depende de `NODE_ENV`:
+
+- `development`: `debug`, habilita los seis niveles.
+- `test`: `debug`, habilita los seis niveles.
+- `production`: `info`, conserva eventos operacionales y solicitudes HTTP, y omite `debug`.
+
+Los registros de cada entorno se guardan de forma independiente en `logs/development/`, `logs/test/` y `logs/production/`. Cada carpeta tiene `combined.log` para los registros habilitados y `error.log`, que almacena exclusivamente los niveles `error` y `fatal`. Winston agrega la fecha al nombre de los archivos rotados.
+
+Los archivos rotan diariamente, tienen un límite de 20 MB y se conservan durante 14 días. La carpeta `logs/` está excluida de Git mediante `.gitignore`.
+
+Ejemplo de la estructura de archivos fechados:
+
+```text
+logs/
+|-- development/
+|   |-- combined.log.YYYY-MM-DD
+|   `-- error.log.YYYY-MM-DD
+|-- test/
+|   |-- combined.log.YYYY-MM-DD
+|   `-- error.log.YYYY-MM-DD
+`-- production/
+    |-- combined.log.YYYY-MM-DD
+    `-- error.log.YYYY-MM-DD
+```
+
+En desarrollo o test, prueba los seis niveles con:
+
+```bash
+curl -i "http://localhost:8080/api/logging/test"
+```
+
+La respuesta exitosa indica los niveles emitidos. En `production`, la ruta responde con el error controlado `404 LOGGER_TEST_DISABLED`; el nivel fatal de prueba nunca termina el proceso.

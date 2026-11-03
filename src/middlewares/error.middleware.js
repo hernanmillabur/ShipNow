@@ -1,5 +1,7 @@
 import { ERROR_CATALOG } from '../errors/error-catalog.js'
 import { DomainError } from '../errors/domain-error.js'
+import { logger, safeErrorMetadata } from '../logging/logger.js'
+import { logUntrackedErrorRequest } from './request-logger.middleware.js'
 
 const getErrorDefinition = (error) => {
   if (error instanceof DomainError) {
@@ -16,11 +18,18 @@ const getErrorDefinition = (error) => {
 
 export const errorMiddleware = (error, req, res, next) => {
   const definition = getErrorDefinition(error)
+  logUntrackedErrorRequest(req, definition.status)
 
-  if (definition.code === 'MOCK_SEED_FAILED') {
-    console.error('Mock seed failed:', error.cause ?? error)
-  } else if (definition.code === 'INTERNAL_ERROR') {
-    console.error(error)
+  if (!error?.logged) {
+    const log = definition.status >= 500 ? logger.error : logger.warning
+    log.call(logger, definition.message, {
+      ...safeErrorMetadata(error),
+      event: 'http.error',
+      errorCode: definition.code,
+      statusCode: definition.status,
+      method: req.method,
+      route: req.path,
+    })
   }
 
   res.status(definition.status).json({

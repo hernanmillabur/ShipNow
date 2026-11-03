@@ -17,6 +17,7 @@ const definitions = {
   VALIDATION_ERROR: [400, 'Los datos enviados no son válidos.'],
   INVALID_REQUEST: [400, 'La solicitud no es válida.'],
   DUPLICATE_RESOURCE: [409, 'Ya existe un registro con esos datos.'],
+  LOGGER_TEST_DISABLED: [404, 'Ruta no encontrada.'],
   MOCK_SEED_FAILED: [500, 'No se pudieron guardar los datos de prueba.'],
   INTERNAL_ERROR: [500, 'Ocurrió un error interno.'],
 }
