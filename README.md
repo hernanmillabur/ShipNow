@@ -1,6 +1,6 @@
 # ShipNow v2
 
-API de gestión de productos, usuarios, tiendas y pedidos construida con Node.js, Express y MongoDB mediante Mongoose.
+API de gestión de productos, usuarios, tiendas, pedidos y entregas construida con Node.js, Express y MongoDB mediante Mongoose.
 
 ## Arquitectura
 
@@ -20,15 +20,27 @@ La configuración se carga y valida centralmente en `src/config/env.config.js`. 
 src/
 |-- app.js
 |-- config/
-|   `-- env.config.js
+|   |-- env.config.js
+|   `-- swagger.config.js
 |-- constants/
 |   `-- index.js
 |-- controllers/
+|   |-- deliveries.controller.js
 |   |-- logging.controller.js
 |   |-- mocks.controller.js
 |   |-- orders.controller.js
 |   |-- products.controller.js
 |   `-- users.controller.js
+|-- docs/
+|   |-- paths/
+|   |   |-- deliveries.docs.js
+|   |   |-- logger.docs.js
+|   |   |-- mocks.docs.js
+|   |   |-- orders.docs.js
+|   |   |-- products.docs.js
+|   |   `-- users.docs.js
+|   `-- schemas/
+|       `-- index.js
 |-- errors/
 |   |-- domain-error.js
 |   `-- error-catalog.js
@@ -50,6 +62,7 @@ src/
 |   |-- stores.repository.js
 |   `-- users.repository.js
 |-- routes/
+|   |-- deliveries.router.js
 |   |-- logging.router.js
 |   |-- mocks.router.js
 |   |-- orders.router.js
@@ -127,6 +140,14 @@ El estado se deriva del stock: `available` cuando es mayor que cero y `out_of_st
 | GET | `/api/orders` | Lista pedidos |
 | GET | `/api/orders/:id` | Obtiene un pedido |
 | PATCH | `/api/orders/:id/deliver` | Marca un pedido como entregado |
+
+### Deliveries
+
+| Método | Ruta | Descripción |
+|---|---|---|
+| POST | `/api/deliveries` | Crea una entrega y asigna un repartidor |
+
+El body requiere `orderId` y `driverId`. El pedido debe existir y el usuario indicado por `driverId` debe existir y tener rol `driver`.
 
 ### Mocks de la segunda pre-entrega
 
