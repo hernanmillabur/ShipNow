@@ -20,6 +20,10 @@ export const getMockDeliveries = (req, res, next) => {
 
 export const seedMocks = async (req, res, next) => {
   try {
-    res.status(201).json({ status: 'success', payload: await mocksService.seed(req.query.qty) })
+    const bodyHasQty = req.body !== null
+      && typeof req.body === 'object'
+      && Object.hasOwn(req.body, 'qty')
+    const requestedQty = bodyHasQty ? req.body.qty : req.query.qty
+    res.status(201).json({ status: 'success', payload: await mocksService.seed(requestedQty) })
   } catch (error) { next(error) }
 }

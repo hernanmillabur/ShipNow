@@ -223,3 +223,29 @@ curl -i "http://localhost:8080/api/logging/test"
 ```
 
 La respuesta exitosa indica los niveles emitidos. En `production`, la ruta responde con el error controlado `404 LOGGER_TEST_DISABLED`; el nivel fatal de prueba nunca termina el proceso.
+
+## Documentación de API con Swagger
+
+ShipNow publica una especificación OpenAPI 3.0.3 y una interfaz Swagger UI para consultar y probar las rutas disponibles:
+
+```text
+http://localhost:8080/api/docs
+```
+
+Levanta la API con `npm run dev` (o `npm start`) después de configurar `.env` y asegurar que MongoDB esté disponible para las operaciones persistentes. La integración usa las dependencias instaladas `swagger-jsdoc` para generar OpenAPI y `swagger-ui-express` para servir Swagger UI. La configuración está separada de los routers en `src/config/swagger.config.js`; los schemas reutilizables y las definiciones de cada módulo están en `src/docs/`.
+
+La documentación organiza la API por los tags Users, Orders, Deliveries, Mocks, Logger y Products. Incluye schemas reutilizables para usuarios, tiendas, pedidos, ítems, entregas, productos y respuestas exitosas o de error. Las rutas y respuestas documentadas corresponden a los endpoints implementados; no se declara autenticación.
+
+En Swagger UI, abre el módulo y la operación que quieres probar, selecciona **Try it out**, completa los parámetros o el body y pulsa **Execute**. Las rutas que consultan o escriben MongoDB requieren conexión y registros relacionados cuando corresponda.
+
+Los GET de `/api/mocks/users`, `/api/mocks/orders` y `/api/mocks/deliveries` generan datos en memoria y no los guardan. Para cargar datos, se recomienda enviar la cantidad en JSON:
+
+```bash
+curl -i -X POST "http://localhost:8080/api/mocks/seed" \
+  -H "Content-Type: application/json" \
+  -d '{"qty":10}'
+```
+
+Seed también acepta `qty` en query para mantener compatibilidad, por ejemplo `/api/mocks/seed?qty=10`; si body y query incluyen `qty`, prevalece el body. La cantidad debe ser un entero entre 1 y 100 y usa 10 como valor predeterminado. **Seed inserta clientes, repartidores, tiendas, pedidos y entregas en MongoDB; no lo ejecutes en una base compartida o real sin revisar antes sus efectos.**
+
+`POST /api/deliveries` crea una entrega persistente y requiere que MongoDB tenga un pedido existente y un usuario existente con rol `driver`. Puedes crear los registros relacionados con los endpoints documentados de Users y Orders. `GET /api/logging/test` es una ruta de prueba del logger: emite los seis niveles configurados, simula `fatal` sin terminar el proceso, y solo está disponible en development y test.

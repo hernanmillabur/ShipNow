@@ -9,8 +9,14 @@ import { logger, safeErrorMetadata } from '../logging/logger.js'
 const DEFAULT_QTY = Object.freeze({ users: 2, orders: 5, deliveries: 5, seed: 10 })
 const MAX_QTY = 100
 
-const quantity = (value, endpoint) => {
+const quantity = (value, endpoint, acceptNumber = false) => {
   const raw = value === undefined ? String(DEFAULT_QTY[endpoint]) : value
+  if (acceptNumber && typeof raw === 'number') {
+    if (!Number.isSafeInteger(raw) || raw < 1 || raw > MAX_QTY) {
+      throw new InvalidMockQuantityError()
+    }
+    return raw
+  }
   if (typeof raw !== 'string' || !/^\d+$/.test(raw)) {
     throw new InvalidMockQuantityError()
   }
@@ -83,7 +89,7 @@ export const mocksService = {
   getDeliveries: (requestedQty) => createMockDataset(quantity(requestedQty, 'deliveries')),
 
   seed: async (requestedQty) => {
-    const qty = quantity(requestedQty, 'seed')
+    const qty = quantity(requestedQty, 'seed', true)
     try {
       const mockUsers = createMockUsers(qty)
       const mockStores = createMockStores(qty)
