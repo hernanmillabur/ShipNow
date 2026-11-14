@@ -3,6 +3,7 @@ import { ordersRepository } from '../repositories/orders.repository.js'
 import { usersRepository } from '../repositories/users.repository.js'
 import { USER_ROLES } from '../constants/index.js'
 import {
+  DomainError,
   DriverNotFoundError,
   InvalidDriverRoleError,
   OrderNotFoundError,
@@ -11,6 +12,16 @@ import {
 
 export const deliveriesService = {
   create: async (data) => {
+    if (
+      !data
+      || typeof data !== 'object'
+      || Array.isArray(data)
+      || !data.orderId
+      || !data.driverId
+    ) {
+      throw new DomainError('VALIDATION_ERROR')
+    }
+
     const order = await ordersRepository.findById(data.orderId)
     if (!order) throw new OrderNotFoundError()
 

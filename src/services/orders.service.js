@@ -3,6 +3,7 @@ import { usersRepository } from '../repositories/users.repository.js'
 import { storesRepository } from '../repositories/stores.repository.js'
 import { ORDER_STATUS } from '../constants/index.js'
 import {
+  DomainError,
   InvalidStateError,
   OrderNotFoundError,
   StoreNotFoundError,
@@ -13,6 +14,30 @@ import {
 
 export const ordersService = {
   createOrder: async (data) => {
+    const hasRequiredFields = data
+      && typeof data === 'object'
+      && !Array.isArray(data)
+      && data.userId
+      && data.storeId
+      && typeof data.address === 'string'
+      && data.address.length > 0
+    const hasValidItems = Array.isArray(data?.items)
+      && data.items.length > 0
+      && data.items.every((item) => (
+        item
+        && typeof item === 'object'
+        && !Array.isArray(item)
+        && typeof item.price === 'number'
+        && Number.isFinite(item.price)
+        && typeof item.quantity === 'number'
+        && Number.isFinite(item.quantity)
+        && (item.name === undefined || typeof item.name === 'string')
+      ))
+
+    if (!hasRequiredFields || !hasValidItems) {
+      throw new DomainError('VALIDATION_ERROR')
+    }
+
     const user = await usersRepository.findById(data.userId)
     if (!user) throw new UserNotFoundError()
 

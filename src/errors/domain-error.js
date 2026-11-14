@@ -27,6 +27,10 @@ export class ProductNotFoundError extends DomainError {
   constructor() { super('PRODUCT_NOT_FOUND') }
 }
 
+export class RouteNotFoundError extends DomainError {
+  constructor() { super('ROUTE_NOT_FOUND') }
+}
+
 export class DriverNotFoundError extends DomainError {
   constructor() { super('DRIVER_NOT_FOUND') }
 }

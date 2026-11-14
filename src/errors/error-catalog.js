@@ -3,6 +3,7 @@ const definitions = {
   STORE_NOT_FOUND: [404, 'Tienda no encontrada.'],
   ORDER_NOT_FOUND: [404, 'Pedido no encontrado.'],
   PRODUCT_NOT_FOUND: [404, 'Producto no encontrado.'],
+  ROUTE_NOT_FOUND: [404, 'Ruta no encontrada.'],
   DRIVER_NOT_FOUND: [404, 'Repartidor no encontrado.'],
   INVALID_DRIVER_ROLE: [400, 'El usuario asignado no tiene el rol de repartidor.'],
   INVALID_STATE: [400, 'El estado actual no permite esta operación.'],
