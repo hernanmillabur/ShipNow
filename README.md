@@ -34,6 +34,7 @@ Completa `MONGODB_URI` en `.env` con la URI del entorno MongoDB que utilizará l
 | `PORT` | Puerto HTTP; entero entre 1 y 65535. El ejemplo usa `8080`. |
 | `MONGODB_URI` | URI requerida para que el servidor conecte MongoDB. |
 | `NODE_ENV` | Entorno requerido: `development`, `production` o `test`. |
+| `UPLOADS_DIR` | Opcional; directorio raíz de archivos. Predeterminado: `uploads/` en la raíz del proyecto. |
 | `JWT_SECRET` | Opcional y no utilizado actualmente por la API. |
 
 Inicia en desarrollo con recarga al cambiar archivos:
@@ -60,9 +61,14 @@ npm start
 
 La suite puede ejecutarse repetidamente mediante `npm test`, utilizando una base de datos temporal e independiente. No es necesario iniciar `npm run dev` ni `npm start` para correrlas. Consulta la [guía de testing](docs/guides/testing.md) para comandos, aislamiento y diagnóstico de fallos.
 
+La API también permite cargar documentos de usuarios y comprobantes de entregas. Consulta la [guía para subir archivos](docs/guides/subir-archivos.md) para preparar solicitudes multipart.
+
+**Limitación de seguridad:** la API todavía no implementa autenticación ni autorización. Las rutas de carga no verifican propiedad de User ni asignación de Delivery; no envíes documentos o comprobantes reales hasta integrar esos controles.
+
 ## Documentación
 
 - [Referencia de API](docs/api-reference.md): contratos, rutas, cuerpos y respuestas.
 - [Arquitectura](docs/arquitectura.md): capas, errores, conexión, logging y testing.
 - Guías prácticas: [testing](docs/guides/testing.md) y [probar errores](docs/guides/probar-errores.md).
+- [Subir archivos](docs/guides/subir-archivos.md): documentos de usuario y comprobantes de entrega.
 - [Swagger UI](http://localhost:8080/api/docs/): disponible cuando el servidor está iniciado.

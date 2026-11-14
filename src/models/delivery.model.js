@@ -1,5 +1,6 @@
 import mongoose from 'mongoose'
 import { DELIVERY_STATUS } from '../constants/index.js'
+import { documentMetadataSchema } from './schemas/document-metadata.schema.js'
 
 const deliverySchema = new mongoose.Schema({
   orderId: { type: mongoose.Schema.Types.ObjectId, ref: 'Order', required: true },
@@ -11,6 +12,7 @@ const deliverySchema = new mongoose.Schema({
   },
   assignedAt: { type: Date, default: Date.now },
   deliveredAt: { type: Date, default: null },
+  proofs: { type: [documentMetadataSchema], default: [] },
 }, { timestamps: true })
 
 export default mongoose.model('Delivery', deliverySchema)

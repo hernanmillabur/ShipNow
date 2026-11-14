@@ -4,6 +4,8 @@ La especificación OpenAPI 3.0.3 y Swagger UI están disponibles en [`/api/docs/
 
 Las rutas persistentes requieren una conexión MongoDB y los registros relacionados que indique cada operación. Las respuestas exitosas usan `{ "status": "success", "payload": ... }`. Los errores gestionados usan `{ "status": "error", "error": { "code": ..., "message": ... } }`.
 
+La API no implementa autenticación ni autorización. Los roles almacenados en User no identifican al solicitante ni conceden permisos; en particular, las rutas de carga no verifican propiedad de User ni asignación de Delivery. No envíes documentos reales a estos endpoints. `GET /api/users` omite los metadatos de `documents`, aunque los campos generales de usuarios siguen siendo públicos. No hay respuestas runtime `401` o `403` para documentar.
+
 ## Users y Stores
 
 | Método | Ruta | Body | Éxito | Errores documentados |
@@ -11,6 +13,8 @@ Las rutas persistentes requieren una conexión MongoDB y los registros relaciona
 | `GET` | `/api/users` | — | `200`; `payload` es una lista de usuarios. | `500 INTERNAL_ERROR` |
 | `POST` | `/api/users` | `name` y `email` requeridos; `role` opcional (`admin`, `user`, `customer`, `driver`, `store`; predeterminado `customer`). | `201`; `payload` es el usuario creado. | `400 VALIDATION_ERROR` o `INVALID_REQUEST`; `409 DUPLICATE_RESOURCE`; `500 INTERNAL_ERROR` |
 | `POST` | `/api/users/stores` | `name` requerido; `address` opcional. | `201`; `payload` es la tienda creada. | `400 VALIDATION_ERROR` o `INVALID_REQUEST`; `500 INTERNAL_ERROR` |
+
+`POST /api/users/{userId}/documents` recibe `multipart/form-data` con `file` obligatorio y `documentType` obligatorio (`identity`, `driver_license` o `proof_of_address`). Acepta PDF, JPEG y PNG de hasta 5 MiB y valida una firma inicial de contenido. Responde `201` con los campos generales de User y los metadatos del archivo recién cargado; no incluye el historial de documentos en `payload.user`. Posibles errores: `400 INVALID_ID`, `FILE_REQUIRED`, `INVALID_DOCUMENT_TYPE` o `UNEXPECTED_FILE_FIELD`; `404 USER_NOT_FOUND`; `413 FILE_TOO_LARGE`; `415 INVALID_FILE_TYPE`; `500 FILE_STORAGE_FAILED` o `FILE_METADATA_SAVE_FAILED`.
 
 ## Products
 
@@ -42,6 +46,8 @@ Para crear un pedido, `userId` y `storeId` deben referenciar registros existente
 | Método | Ruta | Body | Éxito | Errores documentados |
 |---|---|---|---|---|
 | `POST` | `/api/deliveries` | `orderId` y `driverId` requeridos. `status` opcional: `pending`, `in_transit`, `delivered`; `assignedAt` opcional date-time; `deliveredAt` opcional date-time o `null`. | `201`; entrega creada. | `400 INVALID_ID`, `INVALID_DRIVER_ROLE`, `VALIDATION_ERROR` o `INVALID_REQUEST`; `404 ORDER_NOT_FOUND` o `DRIVER_NOT_FOUND`; `500 INTERNAL_ERROR` |
+
+`POST /api/deliveries/{deliveryId}/proof` recibe `multipart/form-data` con el archivo obligatorio en `file`. Acepta PDF, JPEG y PNG de hasta 10 MiB y valida una firma inicial de contenido. Responde `201` con los campos generales de Delivery y los metadatos del comprobante recién cargado; no incluye el historial de comprobantes en `payload.delivery`. Posibles errores: `400 INVALID_ID`, `FILE_REQUIRED` o `UNEXPECTED_FILE_FIELD`; `404 DELIVERY_NOT_FOUND`; `413 FILE_TOO_LARGE`; `415 INVALID_FILE_TYPE`; `500 FILE_STORAGE_FAILED` o `FILE_METADATA_SAVE_FAILED`.
 
 ## Mocks
 

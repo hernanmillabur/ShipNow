@@ -36,7 +36,7 @@ En PowerShell, usa el shim de Windows:
 npx.cmd mocha --require ./tests/setup.js --timeout 120000 --no-parallel tests/orders.test.js
 ```
 
-Reemplaza `tests/orders.test.js` por `tests/users.test.js`, `tests/deliveries.test.js`, `tests/mocks.test.js`, `tests/logging.test.js` o `tests/swagger.test.js` según el módulo que quieras ejecutar. No agregues `--exit`: Mocha debe cerrar cuando los hooks terminen correctamente.
+Reemplaza `tests/orders.test.js` por `tests/users.test.js`, `tests/products.test.js`, `tests/deliveries.test.js`, `tests/mocks.test.js`, `tests/uploads.test.js`, `tests/logging.test.js`, `tests/not-found.test.js` o `tests/swagger.test.js` según el módulo que quieras ejecutar. No agregues `--exit`: Mocha debe cerrar cuando los hooks terminen correctamente.
 
 No ejecutes `npm run dev` ni `npm start` para correr los tests. Esos comandos importan `src/server.js`, inician un servidor HTTP y abren una conexión para la aplicación normal.
 
@@ -49,6 +49,10 @@ Si el binario no está en caché, MongoMemoryServer puede descargarlo en la prim
 El helper `tests/helpers/database.js` valida que la URI use el protocolo `mongodb:`, un host local, no incluya usuario ni contraseña y apunte a `shipnow_test`. Antes de cada prueba vacía las colecciones. Al terminar, desconecta Mongoose y detiene MongoMemoryServer.
 
 El setup importa `src/app.js`, que exporta Express sin iniciar HTTP ni conectarse a MongoDB. La suite no importa `src/server.js`. Así, ninguna URI de una base de desarrollo o Atlas se usa para las pruebas.
+
+`tests/setup.js` también crea un directorio temporal aislado y lo asigna a `UPLOADS_DIR` antes de importar la app. La carpeta se limpia antes de cada prueba y se elimina al finalizar; `uploads/` no se usa en testing. `tests/uploads.test.js` genera buffers sintéticos PDF, JPEG y PNG y verifica tanto los archivos físicos como los metadatos persistidos y su limpieza ante fallos.
+
+Las pruebas también comprueban que la creación normal de User y Delivery no acepte metadatos documentales enviados directamente y que las respuestas de listados/carga no incluyan el historial de documentos o comprobantes. No hay pruebas de autorización por usuario o repartidor porque la aplicación aún no dispone de autenticación ni permisos; no se simula una identidad.
 
 Puedes revisar esos puntos en el código sin imprimir valores de entorno:
 

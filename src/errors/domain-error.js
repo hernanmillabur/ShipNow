@@ -15,6 +15,10 @@ export class UserNotFoundError extends DomainError {
   constructor() { super('USER_NOT_FOUND') }
 }
 
+export class DeliveryNotFoundError extends DomainError {
+  constructor() { super('DELIVERY_NOT_FOUND') }
+}
+
 export class StoreNotFoundError extends DomainError {
   constructor() { super('STORE_NOT_FOUND') }
 }

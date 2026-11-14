@@ -29,6 +29,14 @@ export const deliveriesService = {
     if (!driver) throw new DriverNotFoundError()
     if (driver.role !== USER_ROLES.DRIVER) throw new InvalidDriverRoleError()
 
-    return deliveriesRepository.create(data)
+    const deliveryData = {
+      orderId: data.orderId,
+      driverId: data.driverId,
+      ...(['status', 'assignedAt', 'deliveredAt'].reduce((allowed, field) => {
+        if (Object.hasOwn(data, field)) allowed[field] = data[field]
+        return allowed
+      }, {})),
+    }
+    return deliveriesRepository.create(deliveryData)
   },
 }

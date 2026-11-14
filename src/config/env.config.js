@@ -1,4 +1,5 @@
 import dotenv from 'dotenv'
+import { resolve } from 'node:path'
 
 dotenv.config()
 
@@ -36,6 +37,10 @@ export const config = Object.freeze({
   get port() { return validatedPort ??= readPort() },
   get mongoUri() { return validatedMongoUri ??= required('MONGODB_URI') },
   get nodeEnv() { return validatedNodeEnv ??= readNodeEnv() },
+  get uploadsDir() {
+    const value = process.env.UPLOADS_DIR?.trim()
+    return value ? resolve(value) : undefined
+  },
   // JWT no se consume en esta entrega; se conserva como opcional para usos futuros.
   ...(process.env.JWT_SECRET?.trim() ? { jwtSecret: process.env.JWT_SECRET.trim() } : {}),
 })

@@ -44,6 +44,7 @@
  *   get:
  *     tags: [Users]
  *     summary: Listar usuarios
+ *     description: Endpoint sin autenticación. La respuesta omite metadatos documentales; los campos generales del usuario continúan visibles.
  *     responses:
  *       '200':
  *         description: Lista de usuarios.

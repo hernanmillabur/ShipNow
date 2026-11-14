@@ -2,6 +2,8 @@
 
 Esta guía muestra solicitudes que activan errores implementados por ShipNow. Los ejemplos presuponen que el servidor está iniciado y que las operaciones persistentes tienen acceso a MongoDB. No incluyas credenciales reales en los ejemplos ni en solicitudes compartidas.
 
+ShipNow todavía no implementa autenticación ni autorización, por lo que no existen errores runtime `401`/`403` ni códigos de catálogo para ellos. Las rutas de carga no verifican propiedad de User o asignación de Delivery; no pruebes con documentos reales ni consideres estas rutas protegidas.
+
 Los errores gestionados por el middleware global tienen esta estructura:
 
 ```json
@@ -119,3 +121,21 @@ curl -i http://localhost:8080/api/logging/test
 ```
 
 La ruta emite los niveles de prueba únicamente en `development` y `test`. En production no genera los seis eventos de diagnóstico.
+
+## Errores de carga de archivos
+
+Los siguientes errores usan el envelope global `{ "status": "error", "error": { "code": "...", "message": "..." } }`:
+
+| HTTP | Código | Situación |
+|---:|---|---|
+| 400 | `FILE_REQUIRED` | Falta el campo `file`. |
+| 400 | `INVALID_DOCUMENT_TYPE` | El `documentType` de User no está permitido. |
+| 400 | `UNEXPECTED_FILE_FIELD` | El nombre del campo multipart es inesperado. |
+| 400 | `INVALID_ID` | El ID de User o Delivery no tiene 24 caracteres hexadecimales. |
+| 404 | `USER_NOT_FOUND` / `DELIVERY_NOT_FOUND` | No existe la entidad indicada. |
+| 413 | `FILE_TOO_LARGE` | Se excede 5 MiB para documentos o 10 MiB para comprobantes. |
+| 415 | `INVALID_FILE_TYPE` | MIME, extensión o firma de contenido no permitidos/coincidentes. |
+| 500 | `FILE_STORAGE_FAILED` | Fallo al crear o leer el archivo almacenado. |
+| 500 | `FILE_METADATA_SAVE_FAILED` | Fallo al persistir los metadatos en MongoDB. |
+
+Un fallo posterior a la escritura intenta eliminar el archivo nuevo. Ejemplos de llamadas y campos multipart están en la [guía para subir archivos](subir-archivos.md).

@@ -14,11 +14,25 @@ Los repositorios de `src/repositories/` encapsulan las consultas Mongoose. Esta 
 
 Los modelos de `src/models/` representan `User`, `Store`, `Product`, `Order` y `Delivery`.
 
-- User valida nombre, email único y rol enumerado; el rol predeterminado es `customer`.
+- User valida nombre, email único y rol enumerado; el rol predeterminado es `customer`. `documents` mantiene una lista embebida de metadatos de archivos.
 - Store requiere nombre.
 - Product almacena nombre, descripción, precio, stock y estado. El servicio valida los datos y deriva el estado del stock.
 - Order relaciona usuario y tienda, contiene ítems, total, estado y prioridad. El servicio calcula el total y asigna `pending` al crear.
-- Delivery relaciona pedido y repartidor, mantiene estado enumerado y fechas de asignación y entrega. Si no se envía estado, el modelo usa `pending`.
+- Delivery relaciona pedido y repartidor, mantiene estado enumerado, fechas de asignación y entrega y una lista embebida `proofs`. Si no se envía estado, el modelo usa `pending`.
+
+## Carga de archivos
+
+`src/config/multer.config.js` centraliza el almacenamiento multipart y los límites. `UPLOADS_DIR` opcional selecciona el directorio raíz; si se omite, se usa `uploads/` en la raíz del repositorio. Los archivos se organizan bajo `users/<userId>/` y `deliveries/<deliveryId>/`; el nombre físico es un UUID con extensión derivada del MIME aceptado. `uploads/` está excluido de Git y no se monta con `express.static`.
+
+Se admiten PDF, JPEG y PNG, con límites de 5 MiB para documentos de usuarios y 10 MiB para comprobantes. Multer filtra el MIME declarado y el Service contrasta extensión, MIME y firma inicial del contenido. Esta comprobación de firmas no es un análisis antimalware. El nombre original se sanea y se guarda solo como metadato; MongoDB conserva rutas relativas, MIME, tamaño, categoría documental y fecha, no el binario.
+
+Los documentos se guardan en `User.documents` y los comprobantes en `Delivery.proofs`; ambas listas pueden contener varios metadatos reutilizando el mismo esquema. Si falla una validación posterior a Multer, no existe la entidad o falla la persistencia, el Service intenta eliminar el nuevo archivo. Un fallo en esta compensación se registra en Winston sin incluir el path.
+
+Los servicios de creación de User y Delivery proyectan los campos admitidos por sus contratos y descartan `documents`/`proofs` enviados por el cliente; esos metadatos solo se añaden desde el flujo de carga. Los listados de Users y las respuestas de carga no devuelven historiales documentales.
+
+## Autenticación y autorización
+
+El proyecto conserva roles como datos de User, pero no tiene autenticación, principal de solicitud ni autorización por recurso. `JWT_SECRET` es opcional y no se consume. Por eso las cargas todavía no comprueban propiedad de User o asignación de Delivery, y la API no debe recibir documentos reales hasta incorporar controles de identidad y permisos.
 
 ## Aplicación y servidor
 
@@ -55,5 +69,7 @@ El middleware de solicitudes registra método, ruta, status y duración. `GET /a
 El setup global de Mocha en `tests/setup.js` asigna `NODE_ENV=test` y `PORT=8080`, levanta MongoMemoryServer y entrega su URI a Mongoose. `tests/helpers/database.js` exige una URI local para `shipnow_test`, limpia las colecciones antes de cada prueba y cierra tanto Mongoose como el servidor temporal al terminar.
 
 La versión del binario temporal es MongoDB 8.0.34. Las pruebas importan `app.js` y usan Supertest; no importan `server.js`, no inician el servidor normal y no necesitan Atlas. El setup también intercepta temporalmente `listen` al importar la aplicación para detectar un arranque HTTP accidental.
+
+El setup crea una carpeta temporal para `UPLOADS_DIR` antes de importar `app.js`, la vacía antes de cada prueba y la elimina al terminar. Los casos de carga usan buffers sintéticos; no escriben en `uploads/`.
 
 El comando de ejecución es `npm test`. La explicación detallada de comandos y diagnóstico está en la [guía de testing](guides/testing.md).
