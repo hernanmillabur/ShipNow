@@ -30,8 +30,8 @@ describe('Products API', function () {
       const response = await request(getTestApp()).get('/api/products').expect(200)
 
       expect(response.body).to.have.property('status', 'success')
-      expect(response.body.payload).to.be.an('array').with.lengthOf(1)
-      expect(response.body.payload[0]).to.include({
+      expect(response.body.payload.items).to.be.an('array').with.lengthOf(1)
+      expect(response.body.payload.items[0]).to.include({
         _id: String(created._id),
         name: 'Producto funcional',
         description: 'Producto de prueba',
@@ -42,8 +42,8 @@ describe('Products API', function () {
     })
 
     it('responde INTERNAL_ERROR si falla el repositorio', async function () {
-      const originalGetAll = productsRepository.getAll
-      productsRepository.getAll = async () => {
+      const originalGetPage = productsRepository.getPage
+      productsRepository.getPage = async () => {
         throw new Error('Falla de lectura controlada para el test')
       }
 
@@ -55,8 +55,22 @@ describe('Products API', function () {
           message: ERROR_CATALOG.INTERNAL_ERROR.message,
         })
       } finally {
-        productsRepository.getAll = originalGetAll
+        productsRepository.getPage = originalGetPage
       }
+    })
+
+    it('pagina, filtra por status y rechaza entradas inválidas', async function () {
+      await createProduct({ stock: 2 })
+      await createProduct({ stock: 0 })
+      const response = await request(getTestApp()).get('/api/products?status=out_of_stock&page=1&limit=1').expect(200)
+      expect(response.body.payload.items).to.have.lengthOf(1)
+      expect(response.body.payload.items[0].status).to.equal(PRODUCT_STATUS.OUT_OF_STOCK)
+      expect(response.body.payload.pagination).to.include({ page: 1, limit: 1, totalItems: 1, totalPages: 1, hasNextPage: false, hasPreviousPage: false })
+      expect((await request(getTestApp()).get('/api/products?limit=100')).body.payload.items).to.have.lengthOf(2)
+      expect((await request(getTestApp()).get('/api/products?page=5')).body.payload.items).to.be.empty
+      expect((await request(getTestApp()).get('/api/products?status=invalid')).status).to.equal(400)
+      expect((await request(getTestApp()).get('/api/products?limit=101')).status).to.equal(400)
+      expect((await request(getTestApp()).get('/api/products?page=9007199254740991')).status).to.equal(400)
     })
   })
 

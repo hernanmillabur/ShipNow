@@ -12,7 +12,7 @@ export const createUser = async (req, res, next) => {
 
 export const getUsers = async (req, res, next) => {
   try {
-    res.json({ status: 'success', payload: await usersService.getUsers() })
+    res.json({ status: 'success', payload: await usersService.getUsers(req.query) })
   } catch (error) {
     next(error)
   }

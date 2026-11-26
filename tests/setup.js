@@ -5,7 +5,7 @@ import { join } from 'node:path'
 import { clearTestDatabase, startTestDatabase, stopTestDatabase } from './helpers/database.js'
 import { clearTestApp, setTestApp } from './helpers/test-context.js'
 
-const envNames = ['NODE_ENV', 'PORT', 'MONGODB_URI', 'UPLOADS_DIR']
+const envNames = ['NODE_ENV', 'PORT', 'MONGODB_URI', 'UPLOADS_DIR', 'LOG_LEVEL', 'LOG_TO_FILE', 'SWAGGER_ENABLED']
 const originalEnv = Object.fromEntries(envNames.map((name) => [name, process.env[name]]))
 let temporaryUploadsDirectory
 
@@ -22,6 +22,9 @@ export const mochaHooks = {
 
     process.env.NODE_ENV = 'test'
     process.env.PORT = '8080'
+    process.env.LOG_LEVEL = 'debug'
+    process.env.LOG_TO_FILE = 'false'
+    process.env.SWAGGER_ENABLED = 'true'
     temporaryUploadsDirectory = await mkdtemp(join(tmpdir(), 'shipnow-uploads-'))
     process.env.UPLOADS_DIR = temporaryUploadsDirectory
 

@@ -1,6 +1,7 @@
 import { productsRepository } from '../repositories/products.repository.js'
 import { PRODUCT_STATUS } from '../constants/index.js'
 import { InvalidProductDataError, ProductNotFoundError } from '../errors/domain-error.js'
+import { paginationMetadata, parseProductListQuery } from '../utils/pagination.js'
 
 const statusForStock = (stock) => stock === 0
   ? PRODUCT_STATUS.OUT_OF_STOCK
@@ -28,7 +29,11 @@ const validateProduct = (data, { partial = false } = {}) => {
 }
 
 export const productsService = {
-  getAll: () => productsRepository.getAll(),
+  getAll: async (query = {}) => {
+    const pageQuery = parseProductListQuery(query)
+    const { items, totalItems } = await productsRepository.getPage(pageQuery)
+    return { items, pagination: paginationMetadata({ ...pageQuery, totalItems }) }
+  },
   getById: async (id) => {
     const product = await productsRepository.getById(id)
     if (!product) throw new ProductNotFoundError()

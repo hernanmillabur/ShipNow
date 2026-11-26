@@ -27,7 +27,8 @@ describe('Orders API', function () {
       const response = await request(getTestApp()).get('/api/orders').expect(200)
 
       expect(response.body).to.have.property('status', 'success')
-      expect(response.body.payload).to.be.an('array').that.is.empty
+      expect(response.body.payload.items).to.be.an('array').that.is.empty
+      expect(response.body.payload.pagination).to.include({ page: 1, limit: 20, totalItems: 0, totalPages: 0, hasNextPage: false, hasPreviousPage: false })
     })
 
     it('devuelve los pedidos con sus relaciones y campos principales', async function () {
@@ -38,8 +39,8 @@ describe('Orders API', function () {
       const response = await request(getTestApp()).get('/api/orders').expect(200)
 
       expect(response.body).to.have.property('status', 'success')
-      expect(response.body.payload).to.be.an('array').with.lengthOf(1)
-      expect(response.body.payload[0]).to.include({
+      expect(response.body.payload.items).to.be.an('array').with.lengthOf(1)
+      expect(response.body.payload.items[0]).to.include({
         _id: String(order._id),
         userId: String(user._id),
         storeId: String(store._id),
@@ -47,12 +48,41 @@ describe('Orders API', function () {
         total: 20,
         status: ORDER_STATUS.PENDING,
       })
-      expect(response.body.payload[0].items).to.be.an('array').with.lengthOf(1)
-      expect(response.body.payload[0].items[0]).to.include({
+      expect(response.body.payload.items[0].items).to.be.an('array').with.lengthOf(1)
+      expect(response.body.payload.items[0].items[0]).to.include({
         name: 'Artículo de prueba',
         price: 10,
         quantity: 2,
       })
+    })
+
+    it('pagina, filtra pedidos y conserva orden estable con metadatos', async function () {
+      const user = await createUserFixture()
+      const store = await createStoreFixture()
+      await createOrderFixture({ userId: user._id, storeId: store._id, status: ORDER_STATUS.PENDING })
+      await createOrderFixture({ userId: user._id, storeId: store._id, status: ORDER_STATUS.DELIVERED, priority: ORDER_PRIORITY.HIGH })
+      const response = await request(getTestApp()).get(`/api/orders?status=pending&userId=${user._id}&page=1&limit=1`).expect(200)
+      expect(response.body.payload.items).to.have.lengthOf(1)
+      expect(response.body.payload.pagination).to.include({ page: 1, limit: 1, totalItems: 1, totalPages: 1, hasNextPage: false, hasPreviousPage: false })
+      expect(response.body.payload.items[0].status).to.equal(ORDER_STATUS.PENDING)
+      expect((await request(getTestApp()).get('/api/orders?page=2&limit=1')).body.payload.pagination.hasPreviousPage).to.equal(true)
+      expect((await request(getTestApp()).get('/api/orders?limit=101')).status).to.equal(400)
+      expect((await request(getTestApp()).get('/api/orders?status=unknown')).status).to.equal(400)
+      expect((await request(getTestApp()).get('/api/orders?userId=bad')).body.error.code).to.equal('INVALID_ID')
+      expect((await request(getTestApp()).get('/api/orders?page=9007199254740991')).status).to.equal(400)
+      expect((await request(getTestApp()).get('/api/orders?page=50')).body.payload.items).to.be.empty
+      expect((await request(getTestApp()).get(`/api/orders?storeId=${store._id}&priority=high`)).body.payload.items).to.have.lengthOf(1)
+      expect((await request(getTestApp()).get('/api/orders?priority=urgent')).status).to.equal(400)
+      expect((await request(getTestApp()).get('/api/orders?storeId=invalid')).body.error.code).to.equal('INVALID_ID')
+      expect((await request(getTestApp()).get('/api/orders?limit=100')).body.payload.pagination.limit).to.equal(100)
+      expect((await request(getTestApp()).get('/api/orders?field=status')).status).to.equal(400)
+      const all = (await request(getTestApp()).get('/api/orders?limit=100')).body.payload.items
+      for (let index = 1; index < all.length; index += 1) {
+        const prior = all[index - 1]
+        const current = all[index]
+        expect(new Date(prior.createdAt).getTime()).to.be.at.least(new Date(current.createdAt).getTime())
+        if (prior.createdAt === current.createdAt) expect(prior._id >= current._id).to.equal(true)
+      }
     })
   })
 

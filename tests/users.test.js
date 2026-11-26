@@ -25,13 +25,14 @@ describe('Users API', function () {
     const response = await request(app).get('/api/users').expect(200)
 
     expect(response.body).to.have.property('status', 'success')
-    expect(response.body.payload).to.be.an('array').with.lengthOf(1)
-    expect(response.body.payload[0]).to.include({
+    expect(response.body.payload.items).to.be.an('array').with.lengthOf(1)
+    expect(response.body.payload.items[0]).to.include({
       _id: created.body.payload._id,
       name: 'Ana de prueba',
       email: 'ana-users@example.test',
       role: USER_ROLES.CUSTOMER,
     })
+    expect(response.body.payload.items[0]).not.to.have.property('documents')
   })
 
   it('POST /api/users normaliza un email duplicado como conflicto', async function () {
@@ -46,6 +47,21 @@ describe('Users API', function () {
       code: 'DUPLICATE_RESOURCE',
       message: ERROR_CATALOG.DUPLICATE_RESOURCE.message,
     })
+  })
+
+  it('GET /api/users pagina y filtra por rol sin devolver documents', async function () {
+    await request(getTestApp()).post('/api/users').send({ name: 'Cliente', email: 'page-customer@example.test', role: USER_ROLES.CUSTOMER }).expect(201)
+    await request(getTestApp()).post('/api/users').send({ name: 'Repartidor', email: 'page-driver@example.test', role: USER_ROLES.DRIVER }).expect(201)
+    const response = await request(getTestApp()).get('/api/users?role=driver&page=1&limit=1').expect(200)
+    expect(response.body.payload.items).to.have.lengthOf(1)
+    expect(response.body.payload.items[0].role).to.equal(USER_ROLES.DRIVER)
+    expect(response.body.payload.items[0]).not.to.have.property('documents')
+    expect(response.body.payload.pagination).to.include({ page: 1, limit: 1, totalItems: 1, totalPages: 1, hasNextPage: false, hasPreviousPage: false })
+    expect((await request(getTestApp()).get('/api/users?limit=100')).body.payload.items).to.have.lengthOf(2)
+    expect((await request(getTestApp()).get('/api/users?page=2&limit=1')).body.payload.items).to.have.lengthOf(1)
+    expect((await request(getTestApp()).get('/api/users?role=unknown')).status).to.equal(400)
+    expect((await request(getTestApp()).get('/api/users?limit=101')).status).to.equal(400)
+    expect((await request(getTestApp()).get('/api/users?page=9007199254740991')).status).to.equal(400)
   })
 
   it('POST /api/users/stores crea una tienda y la persiste', async function () {

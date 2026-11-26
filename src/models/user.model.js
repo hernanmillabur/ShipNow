@@ -12,4 +12,6 @@ const userSchema = new mongoose.Schema({
   documents: { type: [userDocumentSchema], default: [] },
 })
 
+userSchema.index({ role: 1, _id: -1 })
+
 export default mongoose.model('User', userSchema)

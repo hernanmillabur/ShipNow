@@ -2,6 +2,7 @@ import { ordersRepository } from '../repositories/orders.repository.js'
 import { usersRepository } from '../repositories/users.repository.js'
 import { storesRepository } from '../repositories/stores.repository.js'
 import { ORDER_STATUS } from '../constants/index.js'
+import { paginationMetadata, parseOrderListQuery } from '../utils/pagination.js'
 import {
   DomainError,
   InvalidStateError,
@@ -49,7 +50,11 @@ export const ordersService = {
     return ordersRepository.create({ ...data, total, status: ORDER_STATUS.PENDING })
   },
 
-  getOrders: () => ordersRepository.findAll(),
+  getOrders: async (query = {}) => {
+    const pageQuery = parseOrderListQuery(query)
+    const { items, totalItems } = await ordersRepository.findPage(pageQuery)
+    return { items, pagination: paginationMetadata({ ...pageQuery, totalItems }) }
+  },
 
   getOrderById: async (id) => {
     const order = await ordersRepository.findById(id)

@@ -54,6 +54,8 @@ El setup importa `src/app.js`, que exporta Express sin iniciar HTTP ni conectars
 
 Las pruebas también comprueban que la creación normal de User y Delivery no acepte metadatos documentales enviados directamente y que las respuestas de listados/carga no incluyan el historial de documentos o comprobantes. No hay pruebas de autorización por usuario o repartidor porque la aplicación aún no dispone de autenticación ni permisos; no se simula una identidad.
 
+Los tests funcionales comprueban paginación, filtros permitidos, límites, IDs y metadatos de Orders, Users y Products; también health, validación de configuración y políticas por entorno. Los cambios temporales a `NODE_ENV` y Swagger se restauran en el mismo test. Un proceso aislado cubre el endpoint de test del logger en producción. Docker se verifica aparte solo cuando el daemon está disponible; las pruebas de aplicación nunca usan Atlas ni datos reales.
+
 Puedes revisar esos puntos en el código sin imprimir valores de entorno:
 
 ```bash
@@ -68,4 +70,4 @@ rg -n 'MongoMemoryServer|assertIsTemporaryLocalUri|mongoose\.connect|MONGODB_URI
 4. Si el error ocurre al iniciar MongoMemoryServer y falta el binario, permite que se complete la descarga y vuelve a ejecutar `npm test`.
 5. No soluciones fallos iniciando el servidor normal ni cambiando la URI de test a una base compartida.
 
-Los logs de Winston pueden escribirse bajo `logs/test/`; la suite no necesita leer archivos de log anteriores para pasar.
+La suite deja `LOG_TO_FILE` deshabilitado por defecto, por lo que Winston escribe a consola y no requiere crear ni leer archivos bajo `logs/test/`.

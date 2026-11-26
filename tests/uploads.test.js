@@ -90,7 +90,7 @@ describe('Uploads API', function () {
       expect(persisted.documents[0]).not.to.have.property('buffer')
 
       const listing = await request(getTestApp()).get('/api/users').expect(200)
-      const listedUser = listing.body.payload.find((entry) => entry._id === user.id)
+      const listedUser = listing.body.payload.items.find((entry) => entry._id === user.id)
       expect(listedUser).to.exist
       expect(listedUser).not.to.have.property('documents')
     })
@@ -220,7 +220,7 @@ describe('Uploads API', function () {
       expect((await usersRepository.findById(created.body.payload._id)).documents).to.have.lengthOf(0)
 
       const listing = await request(getTestApp()).get('/api/users').expect(200)
-      const listedUser = listing.body.payload.find((entry) => entry._id === created.body.payload._id)
+      const listedUser = listing.body.payload.items.find((entry) => entry._id === created.body.payload._id)
       expect(listedUser).to.exist
       expect(listedUser).not.to.have.property('documents')
     })

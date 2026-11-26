@@ -44,9 +44,28 @@
  *   get:
  *     tags: [Orders]
  *     summary: Listar pedidos
+ *     parameters:
+ *       - in: query
+ *         name: page
+ *         schema: { type: integer, minimum: 1, default: 1 }
+ *       - in: query
+ *         name: limit
+ *         schema: { type: integer, minimum: 1, maximum: 100, default: 20 }
+ *       - in: query
+ *         name: status
+ *         schema: { type: string, enum: [pending, assigned, in_transit, delivered, cancelled] }
+ *       - in: query
+ *         name: priority
+ *         schema: { type: string, enum: [low, normal, high] }
+ *       - in: query
+ *         name: userId
+ *         schema: { type: string, pattern: '^[a-fA-F0-9]{24}$' }
+ *       - in: query
+ *         name: storeId
+ *         schema: { type: string, pattern: '^[a-fA-F0-9]{24}$' }
  *     responses:
  *       '200':
- *         description: Lista de pedidos.
+ *         description: Página de pedidos y metadatos de paginación.
  *         content:
  *           application/json:
  *             schema:
@@ -55,9 +74,13 @@
  *                 - type: object
  *                   properties:
  *                     payload:
- *                       type: array
- *                       items:
- *                         $ref: '#/components/schemas/Order'
+ *                       $ref: '#/components/schemas/OrderPage'
+ *       '400':
+ *         description: INVALID_REQUEST por parámetros no válidos o INVALID_ID para filtros identificadores.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
  *       '500':
  *         description: INTERNAL_ERROR.
  *         content:

@@ -2,6 +2,31 @@ const objectId = { type: 'string', pattern: '^[a-fA-F0-9]{24}$', example: '665f1
 const recordId = { type: 'string', example: '665f1e5b20dd2f9bd1e2a123' }
 
 export const schemas = {
+  Pagination: {
+    type: 'object',
+    properties: {
+      page: { type: 'integer', minimum: 1 },
+      limit: { type: 'integer', minimum: 1, maximum: 100 },
+      totalItems: { type: 'integer', minimum: 0 },
+      totalPages: { type: 'integer', minimum: 0 },
+      hasNextPage: { type: 'boolean' },
+      hasPreviousPage: { type: 'boolean' },
+    },
+    required: ['page', 'limit', 'totalItems', 'totalPages', 'hasNextPage', 'hasPreviousPage'],
+  },
+  OrderPage: { type: 'object', properties: { items: { type: 'array', items: { $ref: '#/components/schemas/Order' } }, pagination: { $ref: '#/components/schemas/Pagination' } }, required: ['items', 'pagination'] },
+  UserPage: { type: 'object', properties: { items: { type: 'array', items: { $ref: '#/components/schemas/User' } }, pagination: { $ref: '#/components/schemas/Pagination' } }, required: ['items', 'pagination'] },
+  ProductPage: { type: 'object', properties: { items: { type: 'array', items: { $ref: '#/components/schemas/Product' } }, pagination: { $ref: '#/components/schemas/Pagination' } }, required: ['items', 'pagination'] },
+  Health: {
+    type: 'object',
+    properties: {
+      status: { type: 'string', enum: ['ok', 'unavailable'] },
+      environment: { type: 'string', enum: ['development', 'test', 'production'] },
+      uptimeSeconds: { type: 'integer', minimum: 0 },
+      timestamp: { type: 'string', format: 'date-time' },
+    },
+    required: ['status', 'environment', 'uptimeSeconds', 'timestamp'],
+  },
   User: {
     type: 'object',
     properties: {

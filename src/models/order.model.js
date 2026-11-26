@@ -11,4 +11,9 @@ const orderSchema = new mongoose.Schema({
   priority: { type: String, enum: Object.values(ORDER_PRIORITY), default: ORDER_PRIORITY.NORMAL },
 }, { timestamps: true })
 
+orderSchema.index({ createdAt: -1, _id: -1 })
+for (const field of ['status', 'priority', 'userId', 'storeId']) {
+  orderSchema.index({ [field]: 1, createdAt: -1, _id: -1 })
+}
+
 export default mongoose.model('Order', orderSchema)

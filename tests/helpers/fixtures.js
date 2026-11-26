@@ -29,6 +29,7 @@ export const createOrderFixture = async ({
   userId,
   storeId,
   status = ORDER_STATUS.PENDING,
+  priority,
   address = 'Dirección de entrega',
   items = [{ name: 'Artículo de prueba', price: 10, quantity: 2 }],
 } = {}) => {
@@ -43,6 +44,7 @@ export const createOrderFixture = async ({
     items: orderItems,
     total: orderItems.reduce((total, item) => total + item.price * item.quantity, 0),
     status,
+    ...(priority ? { priority } : {}),
   })
 }
 

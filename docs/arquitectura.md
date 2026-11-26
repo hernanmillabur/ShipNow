@@ -10,6 +10,12 @@ Los servicios de `src/services/` coordinan reglas de negocio y repositorios. Por
 
 Los repositorios de `src/repositories/` encapsulan las consultas Mongoose. Esta separación mantiene el acceso a modelos fuera de controladores y concentra las reglas de aplicación en servicios.
 
+Los listados de Orders, Users y Products pasan por validadores de query del service y ejecutan en el repository `countDocuments()` más una consulta `skip`/`limit`/`lean()`. El contrato incluye `items` y metadatos de página. Se limita `limit` a 100, se rechaza el desbordamiento de `skip`, se restringen filtros a enums y campos existentes, y se ordena con `_id` como desempate. Los índices compuestos acompañan esos filtros y ordenamientos; User no depende de timestamps.
+
+`src/server.js` valida la configuración y conecta MongoDB antes de abrir HTTP. Si la conexión inicial falla, termina con código distinto de cero y no deja reintentos ilimitados. En SIGTERM/SIGINT deja de aceptar conexiones, cierra HTTP, desconecta Mongoose y finaliza Winston. Importar `src/app.js` no arranca el servidor. El endpoint `/api/health` publica únicamente entorno, uptime y timestamp junto al estado básico.
+
+En producción se ocultan Mocks y el endpoint de test del logger; Swagger está apagado por defecto y se puede habilitar con `SWAGGER_ENABLED=true`. Health permanece disponible. Winston emite a consola por defecto; el transporte de archivos rotativos requiere `LOG_TO_FILE=true`.
+
 ## Modelos Mongoose
 
 Los modelos de `src/models/` representan `User`, `Store`, `Product`, `Order` y `Delivery`.
@@ -38,7 +44,7 @@ El proyecto conserva roles como datos de User, pero no tiene autenticación, pri
 
 `src/app.js` crea Express, registra middlewares y monta las rutas; exporta la aplicación sin abrir un puerto ni conectar MongoDB. Esta separación permite entregar la misma aplicación a Supertest sin iniciar el servidor normal.
 
-`src/server.js` es el punto de entrada de `npm start` y `npm run dev`. Lee `PORT`, `MONGODB_URI` y `NODE_ENV`, inicia HTTP y luego conecta Mongoose. Antes configura el resolver DNS del proceso como `1.1.1.1`. Si MongoDB no conecta, registra el error y programa otro intento a los cinco segundos; el código no limita el número de reintentos.
+`src/server.js` es el punto de entrada de `npm start` y `npm run dev`. Valida `PORT`, `MONGODB_URI` y `NODE_ENV`, conecta Mongoose y solo después inicia HTTP. No reemplaza la configuración DNS del sistema ni reintenta indefinidamente: si falla la conexión inicial, registra un error claro y termina con código distinto de cero. Ante SIGTERM/SIGINT detiene el servidor HTTP, cierra Mongoose y finaliza Winston.
 
 ## Configuración de entorno
 
@@ -54,9 +60,9 @@ Las rutas gestionadas siguen el formato `{ status: "error", error: { code, messa
 
 ## Logging y monitoreo
 
-`src/logging/logger.js` configura Winston con niveles personalizados y transportes de consola y archivos rotativos. Los niveles y su orden de severidad son `fatal`, `error`, `warning`, `http`, `info` y `debug`.
+`src/logging/logger.js` configura Winston con niveles personalizados. La consola siempre está habilitada; los archivos rotativos solo se habilitan con `LOG_TO_FILE=true`. Los niveles y su orden de severidad son `fatal`, `error`, `warning`, `http`, `info` y `debug`.
 
-El threshold es `debug` en development y test, e `info` en production. Los transportes de archivo guardan registros combinados y errores en subdirectorios de `logs/`; rotan diariamente, con límite de 20 MB y retención de 14 días. El formato filtra claves y cadenas que parecen contener secretos, tokens o URI MongoDB.
+El nivel predeterminado es `debug` en development y test, e `info` en production; `LOG_LEVEL` puede cambiarlo. Cuando se habilitan archivos, se guardan registros combinados y errores en `logs/<NODE_ENV>/`; rotan diariamente, con límite de 20 MB y retención de 14 días. El formato filtra claves y cadenas que parecen contener secretos, tokens o URI MongoDB.
 
 El middleware de solicitudes registra método, ruta, status y duración. `GET /api/logging/test` emite los seis niveles en development y test; el nivel fatal lleva marca `simulated` y no termina el proceso. En production la ruta devuelve `LOGGER_TEST_DISABLED`.
 

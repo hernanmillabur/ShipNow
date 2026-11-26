@@ -2,7 +2,7 @@ import { productsService } from '../services/products.service.js'
 
 export const getProducts = async (req, res, next) => {
   try {
-    res.json({ status: 'success', payload: await productsService.getAll() })
+    res.json({ status: 'success', payload: await productsService.getAll(req.query) })
   } catch (error) { next(error) }
 }
 

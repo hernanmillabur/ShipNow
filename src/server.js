@@ -1,41 +1,89 @@
-import { setServers } from 'node:dns'
 import mongoose from 'mongoose'
-import { config } from './config/env.config.js'
-import app from './app.js'
-import { logger, safeErrorMetadata } from './logging/logger.js'
+import { validateConfig } from './config/env.config.js'
 
-setServers(['1.1.1.1'])
+let server
+let logger
+let shuttingDown = false
 
-const { port, mongoUri, nodeEnv } = config
+const closeLogger = () => new Promise((resolve) => {
+  logger.once('finish', resolve)
+  logger.end()
+})
 
-const connectMongo = async () => {
+const closeHttpServer = () => new Promise((resolve, reject) => {
+  if (!server) return resolve()
+  server.close((error) => error ? reject(error) : resolve())
+})
+
+const shutdown = async (signal) => {
+  if (shuttingDown) return
+  shuttingDown = true
+  logger.info('ShipNow shutdown requested', { event: 'server.shutdown', signal })
   try {
-    await mongoose.connect(mongoUri)
-    logger.info('MongoDB connected', { event: 'mongodb.connected' })
-  } catch (error) {
-    logger.warning('MongoDB connection failed; retry scheduled', {
-      event: 'mongodb.connection.retry',
-      retryDelayMs: 5000,
-      ...safeErrorMetadata(error),
-    })
-    setTimeout(connectMongo, 5000)
+    await closeHttpServer()
+    await mongoose.disconnect()
+    await closeLogger()
+  } catch {
+    process.exitCode = 1
+    process.stderr.write('ShipNow shutdown encountered an error.\n')
+    await closeLogger()
   }
 }
 
-const server = app.listen(port, () => {
-  logger.info('ShipNow HTTP server listening', {
-    event: 'server.listening',
-    port,
-    nodeEnv,
-  })
-  void connectMongo()
-})
+const start = async () => {
+  let settings
+  try {
+    settings = validateConfig()
+  } catch (error) {
+    process.stderr.write(`ShipNow configuration invalid: ${error.message}\n`)
+    process.exitCode = 1
+    return
+  }
 
-server.on('error', (error) => {
-  logger.fatal('ShipNow HTTP server failed to start', {
-    event: 'server.start.failed',
-    ...safeErrorMetadata(error),
+  let app
+  let safeErrorMetadata
+  try {
+    const [appModule, logging] = await Promise.all([
+      import('./app.js'),
+      import('./logging/logger.js'),
+    ])
+    app = appModule.default
+    logger = logging.logger
+    safeErrorMetadata = logging.safeErrorMetadata
+    await mongoose.connect(settings.mongoUri, { serverSelectionTimeoutMS: 10_000 })
+  } catch (error) {
+    if (logger) {
+      logger.fatal('ShipNow startup failed', {
+        event: 'server.start.failed',
+        ...safeErrorMetadata(error),
+      })
+    } else {
+      process.stderr.write('ShipNow could not initialize logging or connect to MongoDB.\n')
+    }
+    process.exitCode = 1
+    await mongoose.disconnect().catch(() => {})
+    if (logger) await closeLogger()
+    return
+  }
+
+  server = app.listen(settings.port, () => {
+    logger.info('ShipNow HTTP server listening', {
+      event: 'server.listening',
+      port: settings.port,
+      nodeEnv: settings.nodeEnv,
+    })
   })
-  logger.end()
-  logger.once('finish', () => { process.exitCode = 1 })
-})
+  server.on('error', async (error) => {
+    logger.fatal('ShipNow HTTP server failed to start', {
+      event: 'server.start.failed',
+      ...safeErrorMetadata(error),
+    })
+    process.exitCode = 1
+    await mongoose.disconnect()
+    await closeLogger()
+  })
+  process.once('SIGTERM', () => { void shutdown('SIGTERM') })
+  process.once('SIGINT', () => { void shutdown('SIGINT') })
+}
+
+void start()

@@ -4,13 +4,15 @@ La especificación OpenAPI 3.0.3 y Swagger UI están disponibles en [`/api/docs/
 
 Las rutas persistentes requieren una conexión MongoDB y los registros relacionados que indique cada operación. Las respuestas exitosas usan `{ "status": "success", "payload": ... }`. Los errores gestionados usan `{ "status": "error", "error": { "code": ..., "message": ... } }`.
 
+Los listados paginados devuelven `payload.items` y `payload.pagination` con `page`, `limit`, `totalItems`, `totalPages`, `hasNextPage` y `hasPreviousPage`. `page` debe ser entero positivo; `limit` debe estar entre 1 y 100. Los parámetros no admitidos se rechazan mediante `INVALID_REQUEST`.
+
 La API no implementa autenticación ni autorización. Los roles almacenados en User no identifican al solicitante ni conceden permisos; en particular, las rutas de carga no verifican propiedad de User ni asignación de Delivery. No envíes documentos reales a estos endpoints. `GET /api/users` omite los metadatos de `documents`, aunque los campos generales de usuarios siguen siendo públicos. No hay respuestas runtime `401` o `403` para documentar.
 
 ## Users y Stores
 
 | Método | Ruta | Body | Éxito | Errores documentados |
 |---|---|---|---|---|
-| `GET` | `/api/users` | — | `200`; `payload` es una lista de usuarios. | `500 INTERNAL_ERROR` |
+| `GET` | `/api/users` | `page` (1), `limit` (20, máximo 100), filtro opcional `role`. | `200`; `payload.items` y `payload.pagination`; omite `documents`. | `400 INVALID_REQUEST`; `500 INTERNAL_ERROR` |
 | `POST` | `/api/users` | `name` y `email` requeridos; `role` opcional (`admin`, `user`, `customer`, `driver`, `store`; predeterminado `customer`). | `201`; `payload` es el usuario creado. | `400 VALIDATION_ERROR` o `INVALID_REQUEST`; `409 DUPLICATE_RESOURCE`; `500 INTERNAL_ERROR` |
 | `POST` | `/api/users/stores` | `name` requerido; `address` opcional. | `201`; `payload` es la tienda creada. | `400 VALIDATION_ERROR` o `INVALID_REQUEST`; `500 INTERNAL_ERROR` |
 
@@ -22,7 +24,7 @@ El `status` de un producto se deriva del stock: `available` si es mayor que cero
 
 | Método | Ruta | Body o parámetros | Éxito | Errores documentados |
 |---|---|---|---|---|
-| `GET` | `/api/products` | — | `200`; lista de productos. | `500 INTERNAL_ERROR` |
+| `GET` | `/api/products` | `page` (1), `limit` (20, máximo 100), filtro opcional `status` (`available`, `out_of_stock`). | `200`; `payload.items` y `payload.pagination`. | `400 INVALID_REQUEST`; `500 INTERNAL_ERROR` |
 | `GET` | `/api/products/{id}` | `id`: ObjectId de 24 caracteres hexadecimales. | `200`; producto. | `400 INVALID_ID`; `404 PRODUCT_NOT_FOUND`; `500 INTERNAL_ERROR` |
 | `POST` | `/api/products` | `name` no vacío, `price` número ≥ 0 y `stock` entero ≥ 0 requeridos; `description` opcional string. No se permiten propiedades adicionales. | `201`; producto creado. | `400 INVALID_PRODUCT_FIELD`, `INVALID_PRODUCT_NAME`, `INVALID_PRODUCT_PRICE`, `INVALID_PRODUCT_STOCK`, `INVALID_PRODUCT_DESCRIPTION`, `VALIDATION_ERROR` o `INVALID_REQUEST`; `500 INTERNAL_ERROR` |
 | `PUT` | `/api/products/{id}` | `id` de 24 caracteres hexadecimales; body acepta un subconjunto de `name`, `description`, `price`, `stock`. Se validan con las mismas reglas cuando están presentes. | `200`; producto actualizado. | `400 INVALID_ID`, los códigos de validación de producto anteriores, `VALIDATION_ERROR` o `INVALID_REQUEST`; `404 PRODUCT_NOT_FOUND`; `500 INTERNAL_ERROR` |
@@ -34,7 +36,7 @@ Para crear un pedido, `userId` y `storeId` deben referenciar registros existente
 
 | Método | Ruta | Body o parámetros | Éxito | Errores documentados |
 |---|---|---|---|---|
-| `GET` | `/api/orders` | — | `200`; lista de pedidos. | `500 INTERNAL_ERROR` |
+| `GET` | `/api/orders` | `page` (1), `limit` (20, máximo 100), filtros `status`, `priority`, `userId` y `storeId`. | `200`; `payload.items` y `payload.pagination`. | `400 INVALID_REQUEST` o `INVALID_ID`; `500 INTERNAL_ERROR` |
 | `POST` | `/api/orders` | `userId`, `storeId` (ObjectIds), `address` no vacío y `items` no vacío requeridos. Cada ítem requiere `price` y `quantity` numéricos; `name` es opcional string. `priority` opcional: `low`, `normal` o `high`. No se documentan límites de mínimo o enteros para precio/cantidad. | `201`; pedido creado. | `400 INVALID_ID`, `VALIDATION_ERROR` o `INVALID_REQUEST`; `404 USER_NOT_FOUND` o `STORE_NOT_FOUND`; `500 INTERNAL_ERROR` |
 | `GET` | `/api/orders/{id}` | `id`: ObjectId de 24 caracteres hexadecimales. | `200`; pedido. | `400 INVALID_ID`; `404 ORDER_NOT_FOUND`; `500 INTERNAL_ERROR` |
 | `PATCH` | `/api/orders/{id}/deliver` | `id`: ObjectId de 24 caracteres hexadecimales; sin body. | `200`; pedido actualizado a `delivered`. | `400 INVALID_ID` o `INVALID_STATE`; `404 ORDER_NOT_FOUND`; `500 INTERNAL_ERROR` |
@@ -70,6 +72,14 @@ Los GET generan estructuras en memoria y no las guardan. En los tres, `qty` es u
 
 | Método | Ruta | Respuesta |
 |---|---|---|
-| `GET` | `/api/docs/` | `200`; interfaz HTML de Swagger UI. No usa el envelope JSON de la API. |
+| `GET` | `/api/docs/` | `200`; interfaz HTML en development/test y en production cuando `SWAGGER_ENABLED=true`. Si está deshabilitado responde `404 ROUTE_NOT_FOUND`. |
+
+## Health check
+
+| Método | Ruta | Respuesta |
+|---|---|---|
+| `GET` | `/api/health` | `200` y `status: "ok"` si Mongoose está conectado; `503` y `status: "unavailable"` si no lo está. Incluye `environment`, `uptimeSeconds` y `timestamp`, sin datos sensibles. Sigue disponible en production. |
+
+Los endpoints `/api/mocks` (incluido seed) y `/api/logging/test` están deshabilitados en production mediante `404 ROUTE_NOT_FOUND`.
 
 No se declara autenticación en la especificación OpenAPI actual. Una ruta no registrada responde HTTP `404` con `ROUTE_NOT_FOUND` y el envelope JSON de error de ShipNow. Este fallback de Express no corresponde a un path individual en la especificación OpenAPI.

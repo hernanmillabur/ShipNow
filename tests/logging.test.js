@@ -7,8 +7,48 @@ import { getTestApp } from './helpers/test-context.js'
 
 const expectedLevels = ['debug', 'http', 'info', 'warning', 'error', 'fatal']
 const productionResultMarker = '__SHIPNOW_LOGGER_TEST_RESULT__'
+const noFilesMarker = '__SHIPNOW_LOG_FILES_DISABLED__'
 
 describe('Logger API', function () {
+  it('does not create log directories or file transports when LOG_TO_FILE=false', function () {
+    const childScript = `
+      import fs from 'node:fs'
+      import { syncBuiltinESMExports } from 'node:module'
+      import { resolve } from 'node:path'
+      process.env.NODE_ENV = 'test'
+      process.env.LOG_LEVEL = 'info'
+      process.env.LOG_TO_FILE = 'false'
+      const created = []
+      const originalMkdirSync = fs.mkdirSync
+      fs.mkdirSync = function (target, ...args) {
+        created.push(resolve(String(target)))
+        return originalMkdirSync.call(this, target, ...args)
+      }
+      syncBuiltinESMExports()
+      const { logger } = await import('./src/logging/logger.js')
+      const targetLogDir = resolve('./logs/test')
+      console.log('${noFilesMarker}' + JSON.stringify({
+        transports: logger.transports.map((transport) => transport.constructor.name),
+        logDirCreated: created.includes(targetLogDir),
+      }))
+      logger.end()
+    `
+    const child = spawnSync(process.execPath, ['--input-type=module', '-e', childScript], {
+      cwd: process.cwd(),
+      encoding: 'utf8',
+      timeout: 15_000,
+      env: { ...process.env, NODE_ENV: 'test', LOG_LEVEL: 'info', LOG_TO_FILE: 'false' },
+    })
+    expect(child.error, child.error?.message).to.equal(undefined)
+    expect(child.status, child.stderr).to.equal(0)
+    const line = child.stdout.split(/\r?\n/).find((entry) => entry.startsWith(noFilesMarker))
+    expect(line, child.stdout).to.be.a('string')
+    expect(JSON.parse(line.slice(noFilesMarker.length))).to.deep.equal({
+      transports: ['Console'],
+      logDirCreated: false,
+    })
+  })
+
   it('GET /api/logging/test enumera los seis niveles y deja la app disponible', async function () {
     const response = await request(getTestApp()).get('/api/logging/test').expect(200)
 
@@ -43,6 +83,8 @@ describe('Logger API', function () {
     expect(child.error, child.error?.message).to.equal(undefined)
     expect(child.signal).to.equal(null)
     expect(child.status, child.stderr).to.equal(0)
+    expect(child.stdout).not.to.include('event":"logger.test')
+    expect(child.stdout).not.to.include('Simulated fatal log level test')
 
     const resultLine = child.stdout
       .split(/\r?\n/)

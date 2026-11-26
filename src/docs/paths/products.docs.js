@@ -4,9 +4,19 @@
  *   get:
  *     tags: [Products]
  *     summary: Listar productos
+ *     parameters:
+ *       - in: query
+ *         name: page
+ *         schema: { type: integer, minimum: 1, default: 1 }
+ *       - in: query
+ *         name: limit
+ *         schema: { type: integer, minimum: 1, maximum: 100, default: 20 }
+ *       - in: query
+ *         name: status
+ *         schema: { type: string, enum: [available, out_of_stock] }
  *     responses:
  *       '200':
- *         description: Lista de productos.
+ *         description: Página de productos y metadatos de paginación.
  *         content:
  *           application/json:
  *             schema:
@@ -15,9 +25,13 @@
  *                 - type: object
  *                   properties:
  *                     payload:
- *                       type: array
- *                       items:
- *                         $ref: '#/components/schemas/Product'
+ *                       $ref: '#/components/schemas/ProductPage'
+ *       '400':
+ *         description: INVALID_REQUEST para parámetros de consulta no válidos.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
  *       '500':
  *         description: INTERNAL_ERROR.
  *         content:

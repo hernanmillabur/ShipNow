@@ -15,7 +15,6 @@ const levels = Object.freeze({
 })
 
 const logDirectory = resolve(dirname(fileURLToPath(import.meta.url)), '../../logs', config.nodeEnv)
-mkdirSync(logDirectory, { recursive: true })
 
 const sensitiveKey = /(password|passwd|token|secret|authorization|cookie|credential|mongo(?:db)?[_-]?uri|connection.?(?:string|uri)|api.?key|^uri$)/i
 const secretPatterns = [
@@ -49,7 +48,7 @@ const redactFormat = winston.format((info) => {
   return info
 })
 
-const logLevel = config.nodeEnv === 'production' ? 'info' : 'debug'
+const logLevel = config.logLevel
 const fileOptions = {
   dirname: logDirectory,
   datePattern: 'YYYY-MM-DD',
@@ -58,19 +57,20 @@ const fileOptions = {
   zippedArchive: false,
 }
 
-const combinedTransport = new DailyRotateFile({
+const fileLoggingEnabled = config.logToFile
+if (fileLoggingEnabled) mkdirSync(logDirectory, { recursive: true })
+
+const fileTransports = fileLoggingEnabled ? [new DailyRotateFile({
   ...fileOptions,
   filename: 'combined.log',
-  level: 'debug',
-})
-
-const errorTransport = new DailyRotateFile({
+  level: logLevel,
+}), new DailyRotateFile({
   ...fileOptions,
   filename: 'error.log',
   level: 'error',
-})
+})] : []
 
-for (const transport of [combinedTransport, errorTransport]) {
+for (const transport of fileTransports) {
   transport.on('error', () => {
     process.stderr.write('Winston file transport failed.\n')
   })
@@ -85,9 +85,8 @@ export const logger = winston.createLogger({
     winston.format.json(),
   ),
   transports: [
-    new winston.transports.Console(),
-    combinedTransport,
-    errorTransport,
+    new winston.transports.Console({ level: logLevel }),
+    ...fileTransports,
   ],
 })
 

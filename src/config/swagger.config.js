@@ -15,6 +15,7 @@ const options = {
     },
     servers: [{ url: 'http://localhost:8080', description: 'Servidor local' }],
     tags: [
+      { name: 'Health', description: 'Estado básico de disponibilidad de la API.' },
       { name: 'Users', description: 'Usuarios y creación de tiendas.' },
       { name: 'Orders', description: 'Creación y consulta de pedidos.' },
       { name: 'Deliveries', description: 'Asignación de repartidores a pedidos.' },
